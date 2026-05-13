@@ -1,0 +1,32 @@
+jibc_api_migration.admin_settings:
+  path: '/admin/config/system/jibc_api_migration'
+  defaults:
+    _form: '\Drupal\jibc_api_migration\Form\APIMigrationSettingsForm'
+    _title: 'JIBC API Migrations Settings'
+  requirements:
+    _permission: 'administer jibc_api_migration'
+
+jibc_api_migration.report:
+  path: '/admin/reports/jibc_api_migration'
+  defaults:
+    _controller: '\Drupal\jibc_api_migration\Controller\JIBCReportController::report'
+    _title: 'JIBC API Integration Audit Report'
+  requirements:
+    _permission: 'view jibc_api_migration'
+
+jibc_api_migration.refresh:
+  path: '/admin/config/system/jibc_api_migration/refresh_all'
+  defaults:
+    _form: '\Drupal\jibc_api_migration\Form\APIMigrationRefreshForm'
+    _title: 'JIBC API Integration Refresh Courses'
+  requirements:
+    _permission: 'view jibc_api_migration'
+
+jibc_api_migration.availability:
+  path: '/course-availability'
+  defaults:
+    _controller: '\Drupal\jibc_api_migration\Controller\JIBCCourseAvailability::getCourse'
+    _title: 'JIBC Course Availability'
+  methods: [GET]
+  requirements:
+    _access: 'TRUE'

@@ -1,0 +1,145 @@
+uuid: d3fefc2f-612f-46ba-ba52-94d8d3e2039d
+langcode: en
+status: true
+dependencies:
+  enforced:
+    module:
+      - jibc_api_migration
+id: new_courses
+class: null
+field_plugin_method: null
+cck_plugin_method: null
+migration_tags: null
+migration_group: course_group
+label: 'New Courses'
+source:
+  plugin: syncable_url
+  data_fetcher_plugin: jibc_http
+  # URL will be dynamically set by hook_migration_plugins_alter()
+  # Default fallback URL (will be overridden by hook)
+  urls: 'https://apim.workato.com/jibc/coursefetch-v1-1/courses'
+  data_parser_plugin: json
+  item_selector: array
+  # Tokens come from settings.php via JibcHttp data fetcher
+  track_changes: true
+  all_rows: true  
+  ids:
+    Course_ID:
+      type: string
+  fields:
+    -
+      name: Course_ID
+      label: 'Course ID'
+      selector: Course_ID
+    -
+      name: Course_Title
+      label: 'Title'
+      selector: Course_Title
+    -
+      name: Course_Desc
+      label: 'Course Details'
+      selector: Course_Desc
+    -
+      name: Course_Subject
+      label: 'Subject'
+      selector: Course_Subject
+    -
+      name: Course_AreaOfStudy
+      label: 'Area of Study'
+      selector: Course_AreaOfStudy
+    -
+      name: Course_Credits
+      label: 'Course Credit'
+      selector: Course_Credits
+    -
+      name: Course_Hours
+      label: 'Course Duration'
+      selector: Course_Hours
+    -
+      name: Course_DeptDesc
+      label: 'Course Dept'
+      selector: Course_DeptDesc
+    -
+      name: CourseSecPrice_DomPrice
+      label: 'Course Dom Price'
+      selector: CourseSecPrice_DomPrice
+    -
+      name: CourseSecPrice_DomFee
+      label: 'Course Dom Fee'
+      selector: CourseSecPrice_DomFee
+    -
+      name: CourseSecPrice_DomFee_Other
+      label: 'Course Dom Fee Other'
+      selector: CourseSecPrice_DomFee_Other
+    -
+      name: CourseSecPrice_IntPrice
+      label: 'Course Int Price'
+      selector: CourseSecPrice_IntPrice
+    -
+      name: CourseSecPrice_IntFee
+      label: 'Course Int Fee'
+      selector: CourseSecPrice_IntFee
+    -
+      name: CourseSecPrice_IntFee_Other
+      label: 'Course Int Fee Other'
+      selector: CourseSecPrice_IntFee_Other
+    -
+      name: CourseSections
+      label: 'Course Offerings'
+      selector: CourseSections
+    -
+      name: Prerequisites
+      label: 'Course Prerequisites'
+      selector: Prerequisites/0/CourseReq_PrintedSpec
+    -
+      name: Course_ChangeTimestamp
+      label: 'Course Change Timestamp'
+      selector: Course_ChangeTimestamp
+process:
+  title: Course_Title
+  uid:
+    plugin: default_value
+    default_value: 1
+  field_course_id: Course_ID
+  field_course_details:
+    -
+      plugin: get
+      source: Course_Desc
+    -
+      plugin: callback
+      callable: trim
+    -
+      plugin: set_text_format  
+  field_course_number_of_credits: Course_Credits
+  field_course_duration: Course_Hours
+  field_course_department: Course_DeptDesc
+  field_course_domestic_price: CourseSecPrice_DomPrice
+  field_course_international_price: CourseSecPrice_IntPrice
+  field_course_change_timestamp: Course_ChangeTimestamp
+  field_subject:
+    plugin: course_taxonomy
+    source: Course_Subject
+    vocabulary: subject
+  field_area_of_study:
+    plugin: course_taxonomy
+    source: Course_AreaOfStudy
+    vocabulary: area_of_study
+  field_prerequisites:
+    -
+      plugin: get
+      source: Prerequisites
+    -
+      plugin: default_value
+      default_value: 'None'
+  status:
+    plugin: default_value
+    default_value: 1
+  moderation_state:
+    plugin: default_value
+    default_value: published
+  field_course_offerings:
+    plugin: jibc_get_course_offerings
+    source: CourseSections
+destination:
+  plugin: 'entity:node'
+  default_bundle: course

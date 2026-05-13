@@ -1,0 +1,190 @@
+<?php
+
+use Drupal\field_collection\Entity\FieldCollectionItem;
+use Drupal\node\Entity\Node;
+use Drupal\migrate_tools\MigrateExecutable;
+use Drupal\migrate\MigrateMessage;
+use Drupal\migrate\Plugin\MigrationInterface;
+use Drupal\Core\Site\Settings;
+
+/**
+ * Implements hook_migration_plugins_alter().
+ *
+ * Dynamically set the API URLs based on environment configuration.
+ */
+function jibc_api_migration_migration_plugins_alter(array &$migrations) {
+  // Get configuration from settings.php
+  $settings_config = Settings::get('jibc_api', []);
+  
+  if (!empty($settings_config['api_base_url']) && isset($migrations['new_courses'])) {
+    $migrations['new_courses']['source']['urls'] = rtrim($settings_config['api_base_url'], '/') . '/courses';
+  }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function jibc_api_migration_cron() {
+  $logger = \Drupal::logger('jibc_api_migration');
+  $logger->notice('Cron started');
+
+  // Check frequency setting
+  $config = \Drupal::config('jibc_api_migration.settings');
+  $frequency = $config->get('jibc_api_migration_refresh_frequency') ?: 21600;
+  
+  // Check last run time
+  $state = \Drupal::state();
+  $last_run = $state->get('jibc_api_migration.last_cron_run', 0);
+
+  $time_since_last = time() - $last_run;
+  \Drupal::logger('jibc_api_migration')->notice('Time since last run: @time seconds (need @freq)', [
+    '@time' => $time_since_last,
+    '@freq' => $frequency,
+    '@date' => $last_run ? date('Y-m-d H:i:s', $last_run) : 'never',
+  ]);
+  
+  if ((time() - $last_run) < $frequency) {
+    $logger->notice('Skipping - frequency check not met');
+    return;
+  }
+
+  $lock = \Drupal::lock();
+  if (!$lock->acquire('jibc_api_migration_cron', 300)) {
+    \Drupal::logger('jibc_api_migration')->warning('Skipping - another instance running');
+    return;
+  }
+
+  try {
+    // Update last run time BEFORE starting (so we don't run again if this takes a while)
+    $state->set('jibc_api_migration.last_cron_run', time());
+    
+    $logger->notice('=== STARTING COURSE SYNC VIA CRON ===');
+
+    // Step 1: Run import
+    $migration = \Drupal::service('plugin.manager.migration')->createInstance('new_courses');
+    
+    if (!$migration) {
+      $logger->error('Could not load migration "new_courses"');
+      return;
+    }
+    
+    // Log migration status before
+    $status_before = $migration->getStatusLabel();
+    $logger->notice('Migration status before import: @status', [
+      '@status' => $status_before,
+    ]);
+    
+    // Reset if stuck
+    if ($migration->getStatus() !== MigrationInterface::STATUS_IDLE) {
+      $logger->warning('Migration was stuck in @status, forcing reset to IDLE', [
+        '@status' => $status_before,
+      ]);
+      $migration->setStatus(MigrationInterface::STATUS_IDLE);
+    }
+
+    // Step 2: Run import
+    $logger->notice('Starting import...');
+
+    $executable = new \Drupal\jibc_api_migration\JIBCMigrateExecutable(
+      $migration, 
+      new MigrateMessage(), 
+      ['update' => TRUE]
+    );
+
+    $import_result = $executable->import();
+
+    // Log detailed import results
+    $created = $executable->getCreatedCount();
+    $updated = $executable->getUpdatedCount();
+    $failed = $executable->getFailedCount();
+    $ignored = $executable->getIgnoredCount();
+    $processed = $executable->getProcessedCount();
+    
+    $result_label = _jibc_api_migration_get_result_label($import_result);    
+    
+    $logger->notice('Import completed. Result: @result (@code). Processed: @processed (Created: @created, Updated: @updated, Failed: @failed, Ignored: @ignored)', [
+      '@result' => $result_label,
+      '@code' => $import_result,
+      '@processed' => $processed,
+      '@created' => $created,
+      '@updated' => $updated,
+      '@failed' => $failed,
+      '@ignored' => $ignored,
+    ]);
+
+    // Check if import actually ran
+    if ($processed == 0 && $created == 0 && $updated == 0) {
+      $logger->warning('Import reported 0 items processed. This may indicate an issue with the API or source plugin.');
+    }
+
+    // Step 3: Run rollback check for missing courses
+    $logger->notice('Starting rollback check for courses missing from API...');
+    
+    $tempstore = \Drupal::service('tempstore.private')->get('jibc_api_migration');
+    $tempstore->set('unpublished', 0);
+    
+    // Need fresh migration instance for rollback
+    $migration = \Drupal::service('plugin.manager.migration')->createInstance('new_courses');
+    
+    $rollback_executable = new \Drupal\jibc_api_migration\JIBCMigrateExecutable(
+      $migration, 
+      new MigrateMessage(), 
+      []
+    );
+    
+    $rollback_result = $rollback_executable->rollbackMissingItems();
+    $unpublished_count = $tempstore->get('unpublished') ?: 0;
+
+    $rollback_result_label = _jibc_api_migration_get_result_label($rollback_result);
+    
+    $logger->notice('Rollback completed. Result: @result. Unpublished: @count courses', [
+      '@result' => $rollback_result_label,
+      '@count' => $unpublished_count,
+    ]);
+    
+    // Final summary
+    $logger->notice('=== COURSE SYNC COMPLETED === Summary: @created new, @updated updated, @unpublished archived, @failed failed', [
+      '@created' => $created,
+      '@updated' => $updated,
+      '@unpublished' => $unpublished_count,
+      '@failed' => $failed,
+    ]);
+    
+  } catch (\Exception $e) {
+    $logger->error('Error during course sync: @message. Trace: @trace', [
+      '@message' => $e->getMessage(),
+      '@trace' => $e->getTraceAsString(),
+    ]);
+  } finally {
+    $lock->release('jibc_api_migration_cron');
+    $logger->notice('Cron lock released');
+  }
+}
+
+/**
+ * Helper function to convert migration result code to label.
+ */
+function _jibc_api_migration_get_result_label($result) {
+  $labels = [
+    MigrationInterface::RESULT_COMPLETED => 'COMPLETED',
+    MigrationInterface::RESULT_INCOMPLETE => 'INCOMPLETE',
+    MigrationInterface::RESULT_STOPPED => 'STOPPED',
+    MigrationInterface::RESULT_FAILED => 'FAILED',
+    MigrationInterface::RESULT_SKIPPED => 'SKIPPED',
+    MigrationInterface::RESULT_DISABLED => 'DISABLED',
+  ];
+  return $labels[$result] ?? 'UNKNOWN (' . $result . ')';
+}
+
+/**
+ * Implements hook_mail().
+ */
+function jibc_api_migration_mail($key, &$message, $params) {
+  switch ($key) {
+    case 'user':
+    case 'cron':
+      $message['subject'] = t('JIBC Course Migration Report');
+      $message['body'][] = $params['message'];
+      break;
+  }
+}

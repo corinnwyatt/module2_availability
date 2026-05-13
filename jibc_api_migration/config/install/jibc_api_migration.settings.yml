@@ -1,0 +1,8 @@
+jibc_api_migration_refresh_frequency: '21600'
+jibc_api_migration_email_recipients: 'JIBC_Website_Update_Report@jibc.ca'  
+jibc_api_migration_workato_api_url: 'https://apim.workato.com/jibc/coursefetch-v1-1/courses'
+#services:
+  #jibc_api_migration.migration_subscriber:
+    #class: Drupal\jibc_api_migration\EventSubscriber\MigrationSubscriber
+   # tags:
+     # - { name: event_subscriber }

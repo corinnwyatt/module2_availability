@@ -1,0 +1,19 @@
+jibc_integration.admin_settings:
+  title: 'JIBC API Integration Settings'
+  description: 'Configuration screen for API integration'
+  route_name: jibc_api_migration.admin_settings
+  parent: system.admin_config_system
+  weight: 10
+
+jibc_integration.report:
+  title: 'JIBC API Integration Report'
+  description: 'Audit Report for JIBC Course Integration'
+  route_name: jibc_api_migration.report
+  parent: system.admin_reports
+  weight: 0
+
+jibc_integration.refresh:
+  title: 'JIBC API Integration Refresh All'
+  description: 'Configuration screen for API integration'
+  route_name: jibc_api_migration.refresh
+  parent: jibc_api_migration.admin_settings

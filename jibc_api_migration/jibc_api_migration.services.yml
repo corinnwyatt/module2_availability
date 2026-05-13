@@ -1,0 +1,10 @@
+services:
+  jibc_api_migration.refresh:
+    class: Drupal\jibc_api_migration\MigrateCourseService
+    arguments: []
+  jibc_api_migration.cos:
+    class: Drupal\jibc_api_migration\CourseOfferingService
+    arguments: []
+  jibc_api_migration.email:
+    class: Drupal\jibc_api_migration\EmailService
+    arguments: []

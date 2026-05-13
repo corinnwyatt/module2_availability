@@ -1,0 +1,8 @@
+id: course_group
+label: Course Migration Group
+description: JSON to Drupal 8 migration
+source_type: JSON API
+dependencies:
+  enforced:
+    module:
+      - jibc_api_migration
