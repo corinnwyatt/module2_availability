@@ -1,0 +1,13 @@
+jibc_api_migration.settings:
+  type: config_object
+  label: 'JIBC API Migration Settings'
+  mapping:
+    jibc_api_migration_refresh_frequency:
+      type: string  # Changed from integer to string to match settings
+      label: 'Course refresh frequency in seconds'
+    jibc_api_migration_email_recipients:  # Fixed typo
+      type: string
+      label: 'Email recipients for notifications'
+    jibc_api_migration_workato_api_url:
+      type: string
+      label: 'Workato API URL'

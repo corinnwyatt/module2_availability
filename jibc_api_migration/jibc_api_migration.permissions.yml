@@ -1,0 +1,10 @@
+view jibc_api_migration:
+  title: 'View Audit Report'
+  description: 'View all the Course Integration Audit Report'
+access jibc_api_migration:
+  title: 'View Audit Report'
+  description: 'View all the Course Integration Audit Report'
+administer jibc_api_migration:
+  title: 'Admminister Integration Settings'
+  description: 'Access the JIBC Course Integration Settings page'
+  restrict access: true

@@ -1,0 +1,13 @@
+jibc_integration.admin_settings:
+  title: 'JIBC API Integration Settings'
+  route_name: jibc_api_migration.admin_settings
+  base_route: jibc_api_migration.admin_settings
+jibc_integration.admin_settings_tab:
+  title: 'Configuration'
+  route_name: jibc_api_migration.admin_settings
+  parent_id: jibc_integration.admin_settings
+jibc_integration.admin_refresh_tab:
+  title: 'Refresh Courses'
+  route_name: jibc_api_migration.refresh
+  parent_id: jibc_integration.admin_settings
+  

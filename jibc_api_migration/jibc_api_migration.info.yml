@@ -1,0 +1,11 @@
+name: JIBC API Migration
+description: Performs Migration from API
+package: JIBC
+dependencies:
+  - migrate
+  - migrate_plus
+  - migrate_tools
+  - dblog
+type: module
+core_version_requirement: ^9 || ^10 || ^11
+configure: jibc_api_migration.admin_settings
